@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+langchain
+langchain-google-genai
+langchain-chroma
+langgraph
+chromadb
+nltk
+pandas
+scikit-learn
+pymupdf
+python-docx
+psycopg2-binary
+python-multipart
+asyncpg
+pymongo
