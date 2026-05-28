@@ -18,13 +18,13 @@ export default function Login() {
     try {
       if (mode === 'register') {
         const { data } = await auth.register(form);
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
         nav('/dashboard');
       } else {
         const { data } = await auth.login({ email: form.email, password: form.password });
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        localStorage.setItem('token', data.data.token);
+        localStorage.setItem('user', JSON.stringify(data.data.user));
         nav('/dashboard');
       }
     } catch (err) {

@@ -1,0 +1,72 @@
+version: "3.9"
+
+x-prod-defaults: &prod-defaults
+  restart: always
+  mem_limit: 512m
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  deploy:
+    resources:
+      limits:
+        memory: 512M
+
+services:
+  nginx:
+    <<: *prod-defaults
+
+  frontend:
+    <<: *prod-defaults
+    environment:
+      - VITE_API_URL=/api
+
+  backend:
+    <<: *prod-defaults
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGO_URI=${MONGO_URI}
+      - JWT_SECRET=${JWT_SECRET}
+      - AI_SERVICE_URL=${AI_SERVICE_URL}
+      - CHROMA_URL=${CHROMA_URL}
+      - CHROMA_HOST=${CHROMA_HOST}
+      - CHROMA_PORT=${CHROMA_PORT}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - API_BASE_URL=${API_BASE_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - EMAIL_FROM_NAME=${EMAIL_FROM_NAME}
+      - STRIPE_DISABLED=${STRIPE_DISABLED}
+      - ENABLE_STRIPE=${ENABLE_STRIPE}
+      - STRIPE_PRICE_ID=${STRIPE_PRICE_ID}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+
+  ai-service:
+    <<: *prod-defaults
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - MONGO_URI=${MONGO_URI}
+      - MONGODB_URI=${MONGODB_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - CHROMA_HOST=${CHROMA_HOST}
+      - CHROMA_PORT=${CHROMA_PORT}
+
+  chromadb:
+    <<: *prod-defaults
+
+  mongo:
+    <<: *prod-defaults
+
+  postgres:
+    <<: *prod-defaults

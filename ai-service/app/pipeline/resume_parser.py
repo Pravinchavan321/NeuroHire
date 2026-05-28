@@ -33,7 +33,9 @@ class ResumeProcessor:
             return ""
         ext = path.rsplit('.', 1)[-1].lower()
         try:
-            if ext == 'pdf':
+            with open(path, 'rb') as f:
+                header = f.read(5)
+            if ext == 'pdf' or header == b'%PDF-':
                 return "\n".join(p.get_text() for p in fitz.open(path))
             if ext in ('docx','doc'):
                 return "\n".join(p.text for p in Docx(path).paragraphs)

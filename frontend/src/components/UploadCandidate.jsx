@@ -1,15 +1,73 @@
-import { useState } from 'react';
-import { candidates } from '../api/client';
+import { useState, useRef, useEffect } from 'react';
+import { candidates, resume } from '../api/client';
+import ResumeParserPreview from './ResumeParserPreview';
 
 export default function UploadCandidate({ jobId, onSuccess, onCancel }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', email: '', phone: '', resume: null });
+  const [polling, setPolling] = useState(false);
+  const [pollMsg, setPollMsg] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [parsedData, setParsedData] = useState(null);
+  
+  const intervalRef = useRef(null);
+  const errorCount = useRef(0);
+  const startTime = useRef(0);
 
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!form.resume) return setError('Please select a resume file.');
+  const stopPolling = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setPolling(false);
+  };
 
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
+
+  const startPolling = (applicationId) => {
+    setPolling(true);
+    setPollMsg('Analyzing resume...');
+    errorCount.current = 0;
+    startTime.current = Date.now();
+
+    intervalRef.current = setInterval(async () => {
+      // Check for 300s timeout
+      if (Date.now() - startTime.current > 300000) {
+        stopPolling();
+        setError('Analysis taking longer than expected');
+        return;
+      }
+
+      try {
+        const { data } = await candidates.status(applicationId);
+        errorCount.current = 0; // Reset on any successful response
+
+        if (data.success) {
+          const { status } = data.data;
+          
+          if (status === 'complete') {
+            stopPolling();
+            onSuccess();
+          } else if (status === 'failed') {
+            stopPolling();
+            setError('Analysis failed. Please try a different file.');
+          }
+          // If status is 'processing', do nothing and wait for next tick
+        }
+      } catch (err) {
+        errorCount.current += 1;
+        if (errorCount.current >= 3) {
+          stopPolling();
+          setError('Network error: Polling stopped after 3 attempts.');
+        }
+      }
+    }, 3000);
+  };
+
+  const saveAndScreen = async () => {
     setLoading(true);
     setError('');
     
@@ -21,19 +79,64 @@ export default function UploadCandidate({ jobId, onSuccess, onCancel }) {
     fd.append('resume', form.resume);
 
     try {
-      await candidates.upload(fd);
-      onSuccess();
+      const { data } = await candidates.upload(fd);
+      if (data.success && data.data.application_id) {
+        setLoading(false);
+        startPolling(data.data.application_id);
+      } else {
+        throw new Error('Missing application ID');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to upload candidate. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
 
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.resume) return setError('Please select a resume file.');
+
+    setParsing(true);
+    setError('');
+
+    const fd = new FormData();
+    fd.append('resume', form.resume);
+
+    try {
+      const { data } = await resume.parse(fd);
+      if (data.success) setParsedData(data.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Resume parsing failed. Please try again.');
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  if (parsing || parsedData) {
+    return (
+      <ResumeParserPreview
+        parsedData={parsing ? null : parsedData}
+        onConfirm={saveAndScreen}
+        confirming={loading || polling}
+        statusMessage={polling ? pollMsg : ''}
+        error={error}
+        onCancel={() => {
+          setParsedData(null);
+          setParsing(false);
+          setError('');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="glass-card rounded-[2.5rem] p-10 w-full relative">
       <div className="absolute top-0 right-0 p-8">
-        <button onClick={onCancel} className="text-slate-500 hover:text-white transition-colors text-2xl">×</button>
+        <button 
+          onClick={onCancel} 
+          className="text-slate-500 hover:text-white transition-colors text-2xl"
+          disabled={loading || polling}
+        >×</button>
       </div>
 
       <div className="mb-10 text-center">
@@ -50,7 +153,14 @@ export default function UploadCandidate({ jobId, onSuccess, onCancel }) {
         </div>
       )}
 
-      <form onSubmit={submit} className="space-y-6">
+      {polling && (
+        <div className="mb-8 p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-2xl flex flex-col items-center">
+          <div className="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-4" />
+          <p className="text-indigo-400 font-bold text-sm">{pollMsg}</p>
+        </div>
+      )}
+
+      <form onSubmit={submit} className={`space-y-6 ${(loading || polling) ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className="space-y-5">
           <input 
             className="input-premium"
@@ -83,7 +193,7 @@ export default function UploadCandidate({ jobId, onSuccess, onCancel }) {
               className="absolute inset-0 opacity-0 cursor-pointer"
               onChange={e => setForm({ ...form, resume: e.target.files[0] })}
               accept=".pdf,.docx,.doc,.txt"
-              required
+              required={!polling}
             />
             {form.resume ? (
               <div className="flex flex-col items-center">
@@ -101,12 +211,12 @@ export default function UploadCandidate({ jobId, onSuccess, onCancel }) {
 
         <button 
           className="premium-btn w-full py-4 rounded-2xl text-white font-bold text-sm mt-4 shadow-xl shadow-indigo-500/20 group"
-          disabled={loading}
+          disabled={loading || polling}
         >
           {loading ? (
             <div className="flex items-center justify-center gap-2">
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Analyzing Intelligence...</span>
+              <span>Initiating...</span>
             </div>
           ) : (
             'Initiate AI Screening'

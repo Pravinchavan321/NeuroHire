@@ -5,14 +5,24 @@ export default function JobForm({ onSubmit, onCancel }) {
     title: '', description: '', location: '',
     required_skills: '', experience_min: 0
   });
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = e => {
+  const submit = async e => {
     e.preventDefault();
-    onSubmit({
-      ...form,
-      required_skills: form.required_skills.split(',').map(s => s.trim()).filter(s => s),
-      experience_min: Number(form.experience_min),
-    });
+    setError('');
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        ...form,
+        required_skills: form.required_skills.split(',').map(s => s.trim()).filter(s => s),
+        experience_min: Number(form.experience_min),
+      });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create opening. Please check the form and try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -27,6 +37,12 @@ export default function JobForm({ onSubmit, onCancel }) {
       </div>
 
       <form onSubmit={submit} className="space-y-6">
+        {error && (
+          <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2 block ml-1">Position Title</label>
@@ -56,6 +72,7 @@ export default function JobForm({ onSubmit, onCancel }) {
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2 block ml-1">Role Description</label>
           <textarea 
             rows={4} 
+            minLength={20}
             placeholder="What will this person do? What are the mission goals?"
             className="input-premium py-4 resize-none"
             value={form.description}
@@ -89,8 +106,8 @@ export default function JobForm({ onSubmit, onCancel }) {
         </div>
 
         <div className="flex gap-4 pt-6">
-          <button type="submit" className="premium-btn px-10 py-4 rounded-2xl text-white font-bold text-sm shadow-xl shadow-indigo-500/10">
-            Publish Opening
+          <button type="submit" disabled={submitting} className="premium-btn px-10 py-4 rounded-2xl text-white font-bold text-sm shadow-xl shadow-indigo-500/10">
+            {submitting ? 'Publishing...' : 'Publish Opening'}
           </button>
           <button type="button" onClick={onCancel} className="px-10 py-4 rounded-2xl bg-white/5 text-slate-400 font-bold text-sm border border-white/5 hover:bg-white/10 transition-all">
             Cancel

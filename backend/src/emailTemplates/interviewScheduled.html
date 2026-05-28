@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <body style="margin:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f5f9;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;">
+            <tr>
+              <td style="background:#111827;color:#ffffff;padding:24px 28px;font-size:24px;font-weight:800;letter-spacing:.02em;">
+                NeuroHire
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px 28px;">
+                <p style="margin:0 0 16px;font-size:16px;line-height:1.6;">Hi {{candidateName}},</p>
+                <h1 style="margin:0 0 12px;font-size:26px;line-height:1.25;color:#0f172a;">Your interview is scheduled</h1>
+                <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#334155;">You have been scheduled for an interview for <strong>{{jobTitle}}</strong>.</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+                  <tr><td style="padding:12px;color:#64748b;">Date</td><td style="padding:12px;font-weight:700;">{{interviewDate}}</td></tr>
+                  <tr><td style="padding:12px;color:#64748b;background:#f8fafc;">Time</td><td style="padding:12px;background:#f8fafc;font-weight:700;">{{interviewTime}}</td></tr>
+                  <tr><td style="padding:12px;color:#64748b;">Interviewer</td><td style="padding:12px;font-weight:700;">{{interviewerName}}</td></tr>
+                  {{meetingLinkRow}}
+                </table>
+                {{meetingButton}}
+                {{notesBlock}}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 28px;background:#f8fafc;color:#64748b;font-size:12px;line-height:1.6;">
+                Sent by {{footerName}}. If you cannot attend, please reply to the recruiting team as soon as possible.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
