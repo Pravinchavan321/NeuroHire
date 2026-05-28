@@ -1,0 +1,142 @@
+version: "3.9"
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      - PORT=5000
+
+      # MongoDB
+      - MONGO_URI=mongodb://mongo:27017/neurohire
+
+      # PostgreSQL
+      - PG_HOST=postgres
+      - PG_USER=admin
+      - PG_PASSWORD=secret
+      - PG_DB=neurohire
+
+      # Auth
+      - JWT_SECRET=${JWT_SECRET}
+
+      # Internal services
+      - AI_SERVICE_URL=http://ai-service:8000
+
+      # ChromaDB
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+
+      # Public URLs
+      - FRONTEND_URL=http://localhost:3000
+      - API_BASE_URL=http://localhost:3000/api
+
+      # Stripe (disabled for local)
+      - STRIPE_DISABLED=${STRIPE_DISABLED:-true}
+      - ENABLE_STRIPE=false
+      - STRIPE_PRICE_ID=${STRIPE_PRICE_ID}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      chromadb:
+        condition: service_started  
+      ai-service:
+        condition: service_started
+    restart: unless-stopped
+
+  ai-service:
+    build: ./ai-service
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+
+      # MongoDB
+      - MONGO_URI=mongodb://mongo:27017/neurohire
+
+      # PostgreSQL
+      - PG_HOST=postgres
+      - PG_USER=admin
+      - PG_PASSWORD=secret
+      - PG_DB=neurohire
+
+      # ChromaDB
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      chromadb:
+        condition: service_started
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    volumes:
+      - chroma_data:/chroma/chroma
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: neurohire
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d neurohire"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  pg_data:
+  chroma_data:
+  uploads:
+
+networks:
+  default:
+    name: neurohire_network
